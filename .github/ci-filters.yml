@@ -58,6 +58,9 @@ gradle:
 hex:
   - *shared
   - 'hex/**'
+local_scanner:
+  - *shared
+  - 'local_scanner/**'
 maven:
   - *shared
   - 'maven/**'

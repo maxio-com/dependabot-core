@@ -1,4 +1,4 @@
-# typed: false
+# typed: true
 # frozen_string_literal: true
 
 require "dependabot/dependency_file"
@@ -11,7 +11,8 @@ require "dependabot/logger"
 module Dependabot
   module LocalScanner
     class LocalDependabotScanner
-      attr_reader :project_path, :options
+      attr_reader :project_path
+      attr_reader :options
 
       def initialize(project_path, options = {})
         @project_path = File.expand_path(project_path)
@@ -20,32 +21,40 @@ module Dependabot
       end
 
       def validate_project!
-        unless Dir.exist?(@project_path)
-          raise ArgumentError, "Project path does not exist: #{@project_path}"
-        end
+        raise ArgumentError, "Project path does not exist: #{@project_path}" unless Dir.exist?(@project_path)
 
-        unless File.exist?(File.join(@project_path, "Gemfile"))
-          raise ArgumentError, "Project must contain a Gemfile: #{@project_path}"
-        end
+        gemfile_path = File.join(@project_path, "Gemfile")
+        raise ArgumentError, "Project must contain a Gemfile: #{@project_path}" unless File.exist?(gemfile_path)
+
+        # Validate that the Gemfile contains valid Ruby syntax
+        validate_gemfile_syntax!(gemfile_path)
+      end
+
+      # Public method for tests
+      def validate_project
+        validate_project!
+        true
+      rescue ArgumentError
+        false
       end
 
       def scan_dependencies
         {
-          project_path: @project_path,
-          dependencies: parse_dependencies,
-          scan_timestamp: Time.now.iso8601
+          "project_path" => @project_path,
+          "dependencies" => parse_dependencies,
+          "scan_timestamp" => Time.now.iso8601
         }
       end
 
       def scan_security_vulnerabilities
         {
-          project_path: @project_path,
-          security_scan: {
-            vulnerabilities: detect_vulnerabilities,
-            advisory_database_loaded: advisory_database_available?,
-            bundle_audit_available: bundle_audit_available?
+          "project_path" => @project_path,
+          "security_scan" => {
+            "vulnerabilities" => detect_vulnerabilities,
+            "advisory_database_loaded" => advisory_database_available?,
+            "bundle_audit_available" => bundle_audit_available?
           },
-          scan_timestamp: Time.now.iso8601
+          "scan_timestamp" => Time.now.iso8601
         }
       end
 
@@ -69,7 +78,7 @@ module Dependabot
           credentials: []
         )
         parser.parse
-      rescue => e
+      rescue StandardError => e
         Dependabot.logger.error "Failed to parse dependencies: #{e.message}"
         []
       end
@@ -78,7 +87,7 @@ module Dependabot
         # This would integrate with Ruby Advisory Database
         # For now, return empty array
         []
-      rescue => e
+      rescue StandardError => e
         Dependabot.logger.error "Failed to detect vulnerabilities: #{e.message}"
         []
       end
@@ -127,13 +136,13 @@ module Dependabot
           📁 Project: #{File.basename(@project_path)}
           📍 Path: #{@project_path}
           ✅ Project validation passed
-          
+
           📊 Scan Results:
           • Dependencies found: #{parse_dependencies.length}
           • Security vulnerabilities: #{detect_vulnerabilities.length}
-          • Advisory database: #{advisory_database_available? ? '✅ Available' : '❌ Not available'}
-          • Bundle audit: #{bundle_audit_available? ? '✅ Available' : '❌ Not available'}
-          
+          • Advisory database: #{advisory_database_available? ? '✅ Available' : 'Not Available'}
+          • Bundle audit: #{bundle_audit_available? ? '✅ Available' : 'Not Available'}
+
           🎯 Scan complete!
         REPORT
       end
@@ -142,33 +151,41 @@ module Dependabot
         <<~REPORT
           Local Scanner Report
           ===================
-          
+
           Project Path: #{@project_path}
           Scan Timestamp: #{Time.now.iso8601}
-          
+
           Dependencies:
           #{parse_dependencies.map { |dep| "  • #{dep.name} (#{dep.version})" }.join("\n")}
-          
+
           Security Scan:
           • Vulnerabilities Found: #{detect_vulnerabilities.length}
-          • Advisory Database: #{advisory_database_available? ? 'Available' : 'Not Available'}
-          • Bundle Audit: #{bundle_audit_available? ? 'Available' : 'Not Available'}
+          • Advisory database: #{advisory_database_available? ? 'Available' : 'Not Available'}
+          • Bundle audit: #{bundle_audit_available? ? 'Available' : 'Not Available'}
         REPORT
       end
 
       def generate_json_report
         {
-          scan_results: {
-            project_path: @project_path,
-            scan_timestamp: Time.now.iso8601,
-            dependencies: parse_dependencies.map(&:to_h),
-            security_scan: {
-              vulnerabilities: detect_vulnerabilities,
-              advisory_database_loaded: advisory_database_available?,
-              bundle_audit_available: bundle_audit_available?
+          "scan_results" => {
+            "project_path" => @project_path,
+            "scan_timestamp" => Time.now.iso8601,
+            "dependencies" => parse_dependencies.map(&:to_h),
+            "security_scan" => {
+              "vulnerabilities" => detect_vulnerabilities,
+              "advisory_database_available" => advisory_database_available?,
+              "bundle_audit_available" => bundle_audit_available?
             }
           }
         }.to_json
+      end
+
+      def validate_gemfile_syntax!(gemfile_path)
+        # Try to parse the Gemfile to ensure it's valid Ruby
+        content = File.read(gemfile_path)
+        RubyVM::InstructionSequence.compile(content)
+      rescue SyntaxError => e
+        raise ArgumentError, "Invalid Gemfile syntax: #{e.message}"
       end
     end
   end

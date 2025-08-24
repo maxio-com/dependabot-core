@@ -129,9 +129,9 @@ PATH
 PATH
   remote: local_scanner
   specs:
-    dependabot-local_scanner (0.326.1)
-      dependabot-bundler (= 0.326.1)
-      dependabot-common (= 0.326.1)
+    dependabot-local_scanner (0.327.0)
+      dependabot-bundler (= 0.327.0)
+      dependabot-common (= 0.327.0)
 
 PATH
   remote: maven
@@ -520,6 +520,7 @@ CHECKSUMS
   dependabot-gradle (0.327.0)
   dependabot-helm (0.327.0)
   dependabot-hex (0.327.0)
+  dependabot-local_scanner (0.327.0)
   dependabot-maven (0.327.0)
   dependabot-npm_and_yarn (0.327.0)
   dependabot-nuget (0.327.0)

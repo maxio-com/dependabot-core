@@ -1,8 +1,8 @@
-# typed: false
+# typed: strict
 # frozen_string_literal: true
 
 module Dependabot
   module LocalScanner
-    VERSION = "0.326.1"
+    VERSION = "0.327.0"
   end
 end
